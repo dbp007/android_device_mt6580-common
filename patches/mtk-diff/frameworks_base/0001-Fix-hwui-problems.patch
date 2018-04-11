@@ -1,0 +1,87 @@
+From 8d301fe7c09f49dce0dea543f58aa5c93794184e Mon Sep 17 00:00:00 2001
+From: fire855 <thefire855@gmail.com>
+Date: Thu, 14 Apr 2016 15:05:18 +0200
+Subject: [PATCH] Fix hwui problems
+
+Change-Id: Ib1130401d0c003f7d6476d638ec7df1cae39f8a1
+---
+ libs/hwui/Caches.cpp                  | 13 +++----------
+ libs/hwui/Properties.cpp              |  2 +-
+ libs/hwui/renderthread/EglManager.cpp | 24 ------------------------
+ 3 files changed, 4 insertions(+), 35 deletions(-)
+
+diff --git a/libs/hwui/Caches.cpp b/libs/hwui/Caches.cpp
+index 2763e89e19c75..a324ac37d93f5 100644
+--- a/libs/hwui/Caches.cpp
++++ b/libs/hwui/Caches.cpp
+@@ -87,16 +87,9 @@ void Caches::initFont() {
+ }
+ 
+ void Caches::initExtensions() {
+-    if (mExtensions.hasDebugMarker()) {
+-        eventMark = glInsertEventMarkerEXT;
+-
+-        startMark = glPushGroupMarkerEXT;
+-        endMark = glPopGroupMarkerEXT;
+-    } else {
+-        eventMark = eventMarkNull;
+-        startMark = startMarkNull;
+-        endMark = endMarkNull;
+-    }
++    eventMark = eventMarkNull;
++    startMark = startMarkNull;
++    endMark = endMarkNull;
+ }
+ 
+ void Caches::initConstraints() {
+diff --git a/libs/hwui/Properties.cpp b/libs/hwui/Properties.cpp
+index 2e63793f6ffe8..413ebecea336a 100644
+--- a/libs/hwui/Properties.cpp
++++ b/libs/hwui/Properties.cpp
+@@ -29,7 +29,7 @@ bool Properties::debugLayersUpdates = false;
+ bool Properties::debugOverdraw = false;
+ bool Properties::showDirtyRegions = false;
+ bool Properties::skipEmptyFrames = true;
+-bool Properties::swapBuffersWithDamage = true;
++bool Properties::swapBuffersWithDamage = false;
+ 
+ DebugLevel Properties::debugLevel = kDebugDisabled;
+ OverdrawColorSet Properties::overdrawColorSet = OverdrawColorSet::Default;
+diff --git a/libs/hwui/renderthread/EglManager.cpp b/libs/hwui/renderthread/EglManager.cpp
+index eb332d59fee3f..a2f71067851ec 100644
+--- a/libs/hwui/renderthread/EglManager.cpp
++++ b/libs/hwui/renderthread/EglManager.cpp
+@@ -261,31 +261,7 @@ bool EglManager::swapBuffers(EGLSurface surface, const SkRect& dirty,
+     }
+ #endif
+ 
+-#ifdef EGL_KHR_swap_buffers_with_damage
+-    if (CC_LIKELY(Properties::swapBuffersWithDamage)) {
+-        SkIRect idirty;
+-        dirty.roundOut(&idirty);
+-        /*
+-         * EGL_KHR_swap_buffers_with_damage spec states:
+-         *
+-         * The rectangles are specified relative to the bottom-left of the surface
+-         * and the x and y components of each rectangle specify the bottom-left
+-         * position of that rectangle.
+-         *
+-         * HWUI does everything with 0,0 being top-left, so need to map
+-         * the rect
+-         */
+-        EGLint y = height - (idirty.y() + idirty.height());
+-        // layout: {x, y, width, height}
+-        EGLint rects[4] = { idirty.x(), y, idirty.width(), idirty.height() };
+-        EGLint numrects = dirty.isEmpty() ? 0 : 1;
+-        eglSwapBuffersWithDamageKHR(mEglDisplay, surface, rects, numrects);
+-    } else {
+-        eglSwapBuffers(mEglDisplay, surface);
+-    }
+-#else
+     eglSwapBuffers(mEglDisplay, surface);
+-#endif
+ 
+     EGLint err = eglGetError();
+     if (CC_LIKELY(err == EGL_SUCCESS)) {
+-- 
+2.7.4
