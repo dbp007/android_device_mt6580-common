@@ -14,5 +14,4 @@ echo Patches folder = $(cd $PATCH; pwd);
 echo;
 
 # -                  ---PATCH FILE---                      ---FOLDER---
-apply bionic/0001-Apply-LIBC-version-to-__pthread_gettid.patch bionic
 apply external_wpa_supplicant_8/0001-Ignore-NVRAM-ERROR.patch external/wpa_supplicant_8
