@@ -1,143 +1,173 @@
-From 08e35e48d6695801392af7233e8e79e2c4b52c98 Mon Sep 17 00:00:00 2001
-From: DeckerSU <support@decker.su>
-Date: Sat, 18 Feb 2017 16:03:25 +0300
-Subject: [PATCH] Revert back to policy version 29
+From 65a843230bcd5a7c299ea4157ad828e763d8d86e Mon Sep 17 00:00:00 2001
+From: Parthib24 <sirajammunirparthi24@gmail.com>
+Date: Sat, 21 Apr 2018 10:56:38 +0000
+Subject: [PATCH] N: add support for TARGET_KERNEL_IOCTL_IS_NOT_EXTENDED flag
 
-Change-Id: I96e54983d6f837e1ceee61373520e57ddff6430e
+updated version of https://github.com/Parthib24/android_device_mt6580-common/blob/0c7977f13e50dc9fd884c361cc06157aff4cf0ca/patches/mtk-diff/system_sepolicy/0003-Revert-back-to-policy-version-29.patch
+for old kernel(Marshmallow) support on nougat
+
+Signed-off-by: Parthib24 <sirajammunirparthi24@gmail.com>
 ---
- app.te            | 4 ++--
- domain.te         | 2 +-
- isolated_app.te   | 4 ++--
- mediadrmserver.te | 6 +++---
- mediaserver.te    | 6 +++---
- priv_app.te       | 2 +-
- shell.te          | 2 +-
- untrusted_app.te  | 4 ++--
- 8 files changed, 15 insertions(+), 15 deletions(-)
+ Android.mk        | 2 ++
+ app.te            | 3 +++
+ domain.te         | 4 ++++
+ isolated_app.te   | 3 +++
+ mediadrmserver.te | 3 +++
+ mediaserver.te    | 3 +++
+ priv_app.te       | 3 +++
+ shell.te          | 3 +++
+ untrusted_app.te  | 3 +++
+ 9 files changed, 27 insertions(+)
 
+diff --git a/Android.mk b/Android.mk
+index 2a59d52..1b9756f 100644
+--- a/Android.mk
++++ b/Android.mk
+@@ -95,6 +95,7 @@ $(sepolicy_policy.conf): $(call build_policy, $(sepolicy_build_files))
+ 	$(hide) m4 $(PRIVATE_ADDITIONAL_M4DEFS) \
+ 		-D mls_num_sens=$(PRIVATE_MLS_SENS) -D mls_num_cats=$(PRIVATE_MLS_CATS) \
+ 		-D target_build_variant=$(TARGET_BUILD_VARIANT) \
++		-D target_kernel_ioctl_is_not_extended=$(TARGET_KERNEL_IOCTL_IS_NOT_EXTENDED) \
+ 		-D target_has_legacy_camera_hal1=$(TARGET_HAS_LEGACY_CAMERA_HAL1) \
+ 		-D target_needs_platform_text_relocations=$(TARGET_NEEDS_PLATFORM_TEXT_RELOCATIONS) \
+ 		-D shipping_build=$(CYNGN_TARGET) \
+@@ -136,6 +137,7 @@ $(sepolicy_policy_recovery.conf): $(call build_policy, $(sepolicy_build_files))
+ 	$(hide) m4 $(PRIVATE_ADDITIONAL_M4DEFS) \
+ 		-D mls_num_sens=$(PRIVATE_MLS_SENS) -D mls_num_cats=$(PRIVATE_MLS_CATS) \
+ 		-D target_build_variant=$(TARGET_BUILD_VARIANT) \
++		-D target_kernel_ioctl_is_not_extended=$(TARGET_KERNEL_IOCTL_IS_NOT_EXTENDED) \
+ 		-D target_recovery=true \
+ 		-D target_needs_platform_text_relocations=$(TARGET_NEEDS_PLATFORM_TEXT_RELOCATIONS) \
+ 		-s $^ > $@
 diff --git a/app.te b/app.te
-index 19a7dac..207495f 100644
+index 19a7dac..4237147 100644
 --- a/app.te
 +++ b/app.te
-@@ -244,8 +244,8 @@ use_keystore({ appdomain -isolated_app })
+@@ -243,9 +243,12 @@ use_keystore({ appdomain -isolated_app })
+ 
  allow appdomain console_device:chr_file { read write };
  
++ifelse(target_kernel_ioctl_is_not_extended, `true',
++,
  # only allow unprivileged socket ioctl commands
--allowxperm { appdomain -bluetooth } self:{ rawip_socket tcp_socket udp_socket }
--  ioctl { unpriv_sock_ioctls unpriv_tty_ioctls };
-+# allowxperm { appdomain -bluetooth } self:{ rawip_socket tcp_socket udp_socket }
-+#  ioctl { unpriv_sock_ioctls unpriv_tty_ioctls };
+ allowxperm { appdomain -bluetooth } self:{ rawip_socket tcp_socket udp_socket }
+   ioctl { unpriv_sock_ioctls unpriv_tty_ioctls };
++)
  
  allow { appdomain -isolated_app } ion_device:chr_file rw_file_perms;
  
 diff --git a/domain.te b/domain.te
-index a74833c..4ceedf7 100644
+index 59de1f1..5286dd8 100644
 --- a/domain.te
 +++ b/domain.te
-@@ -28,7 +28,7 @@ r_dir_file(domain, self)
+@@ -28,7 +28,11 @@ r_dir_file(domain, self)
  allow domain self:{ fifo_file file } rw_file_perms;
  allow domain self:unix_dgram_socket { create_socket_perms sendto };
  allow domain self:unix_stream_socket { create_stream_socket_perms connectto };
--allowxperm domain domain:{ unix_dgram_socket unix_stream_socket } ioctl unpriv_unix_sock_ioctls;
-+#allowxperm domain domain:{ unix_dgram_socket unix_stream_socket } ioctl unpriv_unix_sock_ioctls;
++
++ifelse(target_kernel_ioctl_is_not_extended, `true',
++,
+ allowxperm domain domain:{ unix_dgram_socket unix_stream_socket } ioctl unpriv_unix_sock_ioctls;
++)
  
  # Inherit or receive open files from others.
  allow domain init:fd use;
 diff --git a/isolated_app.te b/isolated_app.te
-index 978982a..1b41384 100644
+index 978982a..98fbe6d 100644
 --- a/isolated_app.te
 +++ b/isolated_app.te
-@@ -65,8 +65,8 @@ neverallow isolated_app cache_file:file ~{ read getattr };
+@@ -65,8 +65,11 @@ neverallow isolated_app cache_file:file ~{ read getattr };
  
  # Restrict socket ioctls. Either 1. disallow privileged ioctls, 2. disallow the
  # ioctl permission, or 3. disallow the socket class.
--neverallowxperm isolated_app domain:{ rawip_socket tcp_socket udp_socket } ioctl priv_sock_ioctls;
--neverallow isolated_app *:{ netlink_route_socket netlink_selinux_socket } ioctl;
-+#neverallowxperm isolated_app domain:{ rawip_socket tcp_socket udp_socket } ioctl priv_sock_ioctls;
-+#neverallow isolated_app *:{ netlink_route_socket netlink_selinux_socket } ioctl;
++ifelse(target_kernel_ioctl_is_not_extended, `true',
++,
+ neverallowxperm isolated_app domain:{ rawip_socket tcp_socket udp_socket } ioctl priv_sock_ioctls;
+ neverallow isolated_app *:{ netlink_route_socket netlink_selinux_socket } ioctl;
++)
  neverallow isolated_app *:{
    socket netlink_socket packet_socket key_socket appletalk_socket
    netlink_firewall_socket netlink_tcpdiag_socket netlink_nflog_socket
 diff --git a/mediadrmserver.te b/mediadrmserver.te
-index d9368ad..3ef8830 100644
+index d9368ad..cae70fb 100644
 --- a/mediadrmserver.te
 +++ b/mediadrmserver.te
-@@ -52,8 +52,8 @@ allow mediadrmserver processinfo_service:service_manager find;
+@@ -51,9 +51,12 @@ allow mediadrmserver mediaserver_service:service_manager { add find };
+ allow mediadrmserver processinfo_service:service_manager find;
  allow mediadrmserver surfaceflinger_service:service_manager find;
  
++ifelse(target_kernel_ioctl_is_not_extended, `true',
++,
  # only allow unprivileged socket ioctl commands
--allowxperm mediadrmserver self:{ rawip_socket tcp_socket udp_socket }
--  ioctl { unpriv_sock_ioctls unpriv_tty_ioctls };
-+#allowxperm mediadrmserver self:{ rawip_socket tcp_socket udp_socket }
-+#  ioctl { unpriv_sock_ioctls unpriv_tty_ioctls };
+ allowxperm mediadrmserver self:{ rawip_socket tcp_socket udp_socket }
+   ioctl { unpriv_sock_ioctls unpriv_tty_ioctls };
++)
  
  ###
  ### neverallow rules
-@@ -64,4 +64,4 @@ allowxperm mediadrmserver self:{ rawip_socket tcp_socket udp_socket }
- neverallow mediadrmserver { file_type fs_type }:file execute_no_trans;
- 
- # do not allow privileged socket ioctl commands
--neverallowxperm mediadrmserver domain:{ rawip_socket tcp_socket udp_socket } ioctl priv_sock_ioctls;
-+#neverallowxperm mediadrmserver domain:{ rawip_socket tcp_socket udp_socket } ioctl priv_sock_ioctls;
 diff --git a/mediaserver.te b/mediaserver.te
-index dc05e14..519b87f 100644
+index dc05e14..15bbaed 100644
 --- a/mediaserver.te
 +++ b/mediaserver.te
-@@ -117,8 +117,8 @@ allow mediaserver drmserver:drmservice {
+@@ -116,9 +116,12 @@ allow mediaserver drmserver:drmservice {
+     pread
  };
  
++ifelse(target_kernel_ioctl_is_not_extended, `true',
++,
  # only allow unprivileged socket ioctl commands
--allowxperm mediaserver self:{ rawip_socket tcp_socket udp_socket }
--  ioctl { unpriv_sock_ioctls unpriv_tty_ioctls };
-+#allowxperm mediaserver self:{ rawip_socket tcp_socket udp_socket }
-+#  ioctl { unpriv_sock_ioctls unpriv_tty_ioctls };
+ allowxperm mediaserver self:{ rawip_socket tcp_socket udp_socket }
+   ioctl { unpriv_sock_ioctls unpriv_tty_ioctls };
++)
  
  # Access to /data/media.
  # This should be removed if sdcardfs is modified to alter the secontext for its
-@@ -138,4 +138,4 @@ allow mediaserver preloads_data_file:file { getattr read ioctl };
- neverallow mediaserver { file_type fs_type }:file execute_no_trans;
- 
- # do not allow privileged socket ioctl commands
--neverallowxperm mediaserver domain:{ rawip_socket tcp_socket udp_socket } ioctl priv_sock_ioctls;
-+#neverallowxperm mediaserver domain:{ rawip_socket tcp_socket udp_socket } ioctl priv_sock_ioctls;
 diff --git a/priv_app.te b/priv_app.te
-index 85516a6..aab4b20 100644
+index 85516a6..4af4946 100644
 --- a/priv_app.te
 +++ b/priv_app.te
-@@ -87,7 +87,7 @@ allow priv_app sysfs_zram:dir search;
+@@ -86,8 +86,11 @@ allow priv_app app_fuse_file:file rw_file_perms;
+ allow priv_app sysfs_zram:dir search;
  allow priv_app sysfs_zram:file r_file_perms;
  
++ifelse(target_kernel_ioctl_is_not_extended, `true',
++,
  # access the mac address
--allowxperm priv_app self:udp_socket ioctl SIOCGIFHWADDR;
-+#allowxperm priv_app self:udp_socket ioctl SIOCGIFHWADDR;
+ allowxperm priv_app self:udp_socket ioctl SIOCGIFHWADDR;
++)
  
  # Allow GMS core to communicate with update_engine for A/B update.
  binder_call(priv_app, update_engine)
 diff --git a/shell.te b/shell.te
-index 3e95b46..7ed52cb 100644
+index 3e95b46..e93e958 100644
 --- a/shell.te
 +++ b/shell.te
-@@ -150,4 +150,4 @@ allow shell media_rw_data_file:file create_file_perms;
+@@ -149,5 +149,8 @@ allow shell media_rw_data_file:file create_file_perms;
+ # capability.
  neverallow shell file_type:file link;
  
++ifelse(target_kernel_ioctl_is_not_extended, `true',
++,
  # Do not allow privileged socket ioctl commands
--neverallowxperm shell domain:{ rawip_socket tcp_socket udp_socket } ioctl priv_sock_ioctls;
-+#neverallowxperm shell domain:{ rawip_socket tcp_socket udp_socket } ioctl priv_sock_ioctls;
+ neverallowxperm shell domain:{ rawip_socket tcp_socket udp_socket } ioctl priv_sock_ioctls;
++)
+\ No newline at end of file
 diff --git a/untrusted_app.te b/untrusted_app.te
-index b9a72ed..3a1d839 100644
+index 07bfbf4..4da6361 100644
 --- a/untrusted_app.te
 +++ b/untrusted_app.te
-@@ -158,8 +158,8 @@ neverallow untrusted_app sysfs_mac_address:file no_rw_file_perms;
+@@ -158,8 +158,11 @@ neverallow untrusted_app sysfs_mac_address:file no_rw_file_perms;
  
  # Restrict socket ioctls. Either 1. disallow privileged ioctls, 2. disallow the
  # ioctl permission, or 3. disallow the socket class.
--neverallowxperm untrusted_app domain:{ rawip_socket tcp_socket udp_socket } ioctl priv_sock_ioctls;
--neverallow untrusted_app *:{ netlink_route_socket netlink_selinux_socket } ioctl;
-+#neverallowxperm untrusted_app domain:{ rawip_socket tcp_socket udp_socket } ioctl priv_sock_ioctls;
-+#neverallow untrusted_app *:{ netlink_route_socket netlink_selinux_socket } ioctl;
++ifelse(target_kernel_ioctl_is_not_extended, `true',
++,
+ neverallowxperm untrusted_app domain:{ rawip_socket tcp_socket udp_socket } ioctl priv_sock_ioctls;
+ neverallow untrusted_app *:{ netlink_route_socket netlink_selinux_socket } ioctl;
++)
  neverallow untrusted_app *:{
    socket netlink_socket packet_socket key_socket appletalk_socket
    netlink_firewall_socket netlink_tcpdiag_socket netlink_nflog_socket
 -- 
-2.7.4
+2.14.1
 
